@@ -31,3 +31,40 @@ body {
     text-wrap: balance;
   }
 }
+
+.transition-transform-left {
+  transition: transform 300ms ease-in-out;
+  transform: translateX(-50%);
+}
+
+.transition-transform-right {
+  transition: transform 300ms ease-in-out;
+  transform: translateX(50%);
+}
+
+.no-transition {
+  transition: none;
+  transform: translateX(0);
+}
+
+.dropdown-enter {
+  opacity: 0;
+  transform: scaleX(0) scaleY(0);
+}
+
+.dropdown-enter-active {
+  opacity: 1;
+  transform: scaleX(1) scaleY(1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.dropdown-exit {
+  opacity: 1;
+  transform: scaleX(1) scaleY(1);
+}
+
+.dropdown-exit-active {
+  opacity: 0;
+  transform: scaleX(0) scaleY(0);
+  transition: opacity 300ms, transform 300ms;
+}
