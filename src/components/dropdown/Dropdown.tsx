@@ -1,11 +1,45 @@
-import { useState, useCallback, useRef } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import {
+  useState,
+  useCallback,
+  useRef,
+  ReactElement,
+  cloneElement,
+  PropsWithChildren
+} from 'react';
 import ReactDOM from 'react-dom';
 import DropdownContent from './DropdownContent';
 import useDropdownPosition from './useDropdownPosition';
+import DefaultDropdownButton from './DropdownButton';
+import DefaultDropdownContainer from './DropdownContainer';
+import DefaultDropdownMenu from './DropdownMenu';
+import getComponent, { ComponentWithRef } from './getComponent';
 
 interface DropdownItem {
   label: string;
   children?: DropdownItem[];
+}
+
+interface Position {
+  top: number;
+  left: number;
+  transformOrigin: string;
+}
+
+interface DropdownComponents {
+  DropdownButton?: ComponentWithRef<HTMLButtonElement, { onClick: () => void }>;
+  DropdownContainer?: ComponentWithRef<HTMLDivElement>;
+  DropdownMenu?: ComponentWithRef<HTMLDivElement, {
+    position: Position;
+    isPositioned: boolean;
+    menuWidth: number;
+    menuHeight: string | number;
+    zIndex?: number;
+    withArrow?: boolean;
+    arrowSize?: number;
+    arrowOffset?: number;
+    align: 'left' | 'right';
+  }>;
 }
 
 interface DropdownProps {
@@ -19,9 +53,11 @@ interface DropdownProps {
   arrowSize?: number;
   arrowOffset?: number;
   searchable?: boolean;
+  components?: DropdownComponents;
+  children?: React.ReactNode;
 }
 
-const Dropdown: React.FC<DropdownProps> = ({
+const Dropdown: React.FC<PropsWithChildren<DropdownProps>> = ({
   items,
   portal = false,
   zIndex,
@@ -32,6 +68,8 @@ const Dropdown: React.FC<DropdownProps> = ({
   arrowSize = 10,
   arrowOffset = 10,
   searchable = false,
+  components = {},
+  children,
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
@@ -105,43 +143,55 @@ const Dropdown: React.FC<DropdownProps> = ({
     setIsOpen((prevIsOpen) => !prevIsOpen);
   };
 
-  const dropdownContent = (
-    <DropdownContent
-      currentItems={currentItems}
-      breadcrumb={breadcrumb}
-      slideDirection={slideDirection}
-      isPositioned={isPositioned}
-      searchValue={searchValue}
-      debouncedSearchValue={debouncedSearchValue}
-      menuWidth={menuWidth}
-      menuHeight={calculatedMenuHeight}
-      portal={portal}
-      position={position}
-      zIndex={zIndex}
-      withArrow={withArrow}
-      arrowSize={arrowSize}
-      arrowOffset={arrowOffset}
-      align={align}
-      searchable={searchable}
-      handleItemClick={handleItemClick}
-      handleBreadcrumbClick={handleBreadcrumbClick}
-      handleSearchChange={handleSearchChange}
-      ref={dropdownListRef}
-    />
+  const ButtonComponent = getComponent(
+    components.DropdownButton,
+    DefaultDropdownButton as any,
+    { onClick: toggleDropdown, children } as any,
+    buttonRef
+  );
+
+  const ContainerComponent = getComponent(
+    components.DropdownContainer,
+    DefaultDropdownContainer,
+    { children: ButtonComponent },
+    dropdownListRef
+  );
+
+  const MenuComponent = getComponent(
+    components.DropdownMenu,
+    DefaultDropdownMenu as any,
+    {
+      position,
+      isPositioned,
+      menuWidth,
+      menuHeight: calculatedMenuHeight,
+      zIndex,
+      withArrow,
+      arrowSize,
+      arrowOffset,
+      align,
+      children: (
+        <DropdownContent
+          currentItems={currentItems}
+          breadcrumb={breadcrumb}
+          slideDirection={slideDirection}
+          searchValue={searchValue}
+          debouncedSearchValue={debouncedSearchValue}
+          searchable={searchable}
+          handleItemClick={handleItemClick}
+          handleBreadcrumbClick={handleBreadcrumbClick}
+          handleSearchChange={handleSearchChange}
+        />
+      ),
+    } as any,
+    dropdownListRef
   );
 
   return (
-    <div className="relative inline-block text-left">
-      <button
-        ref={buttonRef}
-        className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-        type="button"
-        onClick={toggleDropdown}
-      >
-        Dropdown
-      </button>
-      {isOpen && (portal ? ReactDOM.createPortal(dropdownContent, document.body) : dropdownContent)}
-    </div>
+    <>
+      {ContainerComponent}
+      {isOpen && (portal ? ReactDOM.createPortal(MenuComponent, document.body) : MenuComponent)}
+    </>
   );
 };
 
