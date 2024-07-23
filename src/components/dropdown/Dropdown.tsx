@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import DropdownContent from './DropdownContent';
-import findScrollContainers from './findScrollContainers'; // Import the function
+import useDropdownPosition from './useDropdownPosition';
 
 interface DropdownItem {
   label: string;
@@ -14,6 +14,7 @@ interface DropdownProps {
   zIndex?: number;
   menuWidth?: number;
   menuHeight?: string | number;
+  align?: 'left' | 'right';
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -22,21 +23,13 @@ const Dropdown: React.FC<DropdownProps> = ({
   zIndex,
   menuWidth = 300,
   menuHeight = 'auto',
+  align = 'left',
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [slideDirection, setSlideDirection] = useState<'none' | 'left' | 'right'>('none');
-  const [position, setPosition] = useState({ top: 0, left: 0, transformOrigin: 'top' });
-  const [isPositioned, setIsPositioned] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
   const [debouncedSearchValue, setDebouncedSearchValue] = useState<string>('');
-  const [calculatedMenuHeight, setCalculatedMenuHeight] = useState<string | number>(menuHeight);
-
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownListRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const scrollContainersRef = useRef<(HTMLElement | Document)[]>([]);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.children) {
@@ -64,74 +57,17 @@ const Dropdown: React.FC<DropdownProps> = ({
     }, 300);
   };
 
-  const toggleDropdown = () => {
-    setIsOpen((prevIsOpen) => {
-      const nextIsOpen = !prevIsOpen;
-      if (!nextIsOpen) setIsPositioned(false);
-      return nextIsOpen;
-    });
-  };
+  const {
+    buttonRef,
+    dropdownListRef,
+    position,
+    isPositioned,
+    calculatedMenuHeight,
+    isOpen,
+    setIsOpen,
+  } = useDropdownPosition({ menuHeight, align });
 
-  const updatePosition = useCallback(() => {
-    if (buttonRef.current && dropdownListRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceAbove = rect.top;
-      const spaceBelow = viewportHeight - rect.bottom;
-      const listHeight = dropdownListRef.current.scrollHeight;
-
-      let calculatedHeight: number;
-      let topPosition: number;
-      let transformOrigin: string;
-
-      if (typeof menuHeight === 'string' && menuHeight === 'auto') {
-        if (listHeight <= spaceBelow) {
-          calculatedHeight = listHeight;
-          topPosition = rect.bottom + window.scrollY;
-          transformOrigin = 'top';
-        } else if (listHeight <= spaceAbove) {
-          calculatedHeight = listHeight;
-          topPosition = rect.top + window.scrollY - listHeight;
-          transformOrigin = 'bottom';
-        } else if (spaceBelow >= spaceAbove) {
-          calculatedHeight = spaceBelow;
-          topPosition = rect.bottom + window.scrollY;
-          transformOrigin = 'top';
-        } else {
-          calculatedHeight = spaceAbove;
-          topPosition = rect.top + window.scrollY - spaceAbove;
-          transformOrigin = 'bottom';
-        }
-      } else {
-        calculatedHeight = typeof menuHeight === 'number' ? menuHeight : 0; // Ensure calculatedHeight is a number
-        if (calculatedHeight <= spaceBelow) {
-          topPosition = rect.bottom + window.scrollY;
-          transformOrigin = 'top';
-        } else {
-          topPosition = rect.top + window.scrollY - calculatedHeight;
-          transformOrigin = 'bottom';
-        }
-      }
-
-      setCalculatedMenuHeight(calculatedHeight);
-      setPosition({
-        top: topPosition,
-        left: rect.left + window.scrollX,
-        transformOrigin: transformOrigin,
-      });
-      setIsPositioned(true);
-    }
-  }, [menuHeight]);
-
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (
-      buttonRef.current &&
-      !buttonRef.current.contains(event.target as Node)
-    ) {
-      setIsOpen(false);
-      setIsPositioned(false);
-    }
-  }, []);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const debounce = (func: (...args: any[]) => void, wait: number) => {
     return (...args: any[]) => {
@@ -157,40 +93,9 @@ const Dropdown: React.FC<DropdownProps> = ({
     debouncedSearch(query);
   };
 
-  useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', updatePosition);
-
-    const handleScroll = () => {
-      updatePosition();
-    };
-
-    // Lắng nghe sự kiện scroll ở nhiều phần tử hơn, bao gồm cả `document`
-    scrollContainersRef.current = findScrollContainers(buttonRef.current);
-    scrollContainersRef.current.push(document, document.documentElement, document.body);
-    scrollContainersRef.current.forEach((container) => {
-      container.addEventListener('scroll', handleScroll);
-    });
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', updatePosition);
-
-      scrollContainersRef.current.forEach((container) => {
-        container.removeEventListener('scroll', handleScroll);
-      });
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [handleClickOutside, updatePosition]);
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      updatePosition();
-    }
-  }, [isOpen, updatePosition]);
+  const toggleDropdown = () => {
+    setIsOpen((prevIsOpen) => !prevIsOpen);
+  };
 
   const dropdownContent = (
     <DropdownContent
