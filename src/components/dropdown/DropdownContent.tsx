@@ -16,7 +16,7 @@ interface DropdownContentProps {
   menuWidth: number;
   menuHeight: string | number;
   portal: boolean;
-  position: { top: number; left: number };
+  position: { top: number; left: number; transformOrigin: string };
   zIndex?: number;
   handleItemClick: (item: DropdownItem) => void;
   handleBreadcrumbClick: (index: number) => void;
@@ -50,7 +50,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
     <div
       ref={ref}
       className={classNames(
-        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-x-hidden",
+        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-x-hidden transition-transform duration-300",
         {
           "dropdown-enter": !isPositioned,
           "dropdown-enter-active": isPositioned,
@@ -62,10 +62,11 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
         top: portal ? position.top : 'auto',
         left: portal ? position.left : 'auto',
         opacity: isPositioned ? 1 : 0,
-        transformOrigin: 'top',
+        transformOrigin: position.transformOrigin,
         width: `${menuWidth}px`,
         zIndex: zIndex,
         maxHeight: menuHeight,
+        transform: isPositioned ? 'scaleX(1) scaleY(1)' : 'scaleX(0) scaleY(0)',
       }}
     >
       <div className="p-2">

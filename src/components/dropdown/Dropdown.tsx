@@ -14,7 +14,6 @@ interface DropdownProps {
   zIndex?: number;
   menuWidth?: number;
   menuHeight?: string | number;
-  scrollBehavior?: 'closest' | 'observer';
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -23,13 +22,11 @@ const Dropdown: React.FC<DropdownProps> = ({
   zIndex,
   menuWidth = 300,
   menuHeight = 'auto',
-  scrollBehavior = 'closest',
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [slideDirection, setSlideDirection] = useState<'none' | 'left' | 'right'>('none');
-  const [childItems, setChildItems] = useState<DropdownItem[] | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, transformOrigin: 'top' });
   const [isPositioned, setIsPositioned] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
@@ -39,15 +36,13 @@ const Dropdown: React.FC<DropdownProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownListRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const scrollContainersRef = useRef<HTMLElement[]>([]);
+  const scrollContainersRef = useRef<(HTMLElement | Document)[]>([]);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.children) {
       setSlideDirection('left');
       setTimeout(() => {
         setBreadcrumb([...breadcrumb, item]);
-        setChildItems(item.children!);
         setCurrentItems(item.children!);
         setSearchValue('');
         setDebouncedSearchValue('');
@@ -62,7 +57,6 @@ const Dropdown: React.FC<DropdownProps> = ({
       const newBreadcrumb = breadcrumb.slice(0, index);
       const newCurrentItems = newBreadcrumb.length === 0 ? items : newBreadcrumb[newBreadcrumb.length - 1].children!;
       setBreadcrumb(newBreadcrumb);
-      setChildItems(null);
       setCurrentItems(newCurrentItems);
       setSearchValue('');
       setDebouncedSearchValue('');
@@ -171,52 +165,26 @@ const Dropdown: React.FC<DropdownProps> = ({
       updatePosition();
     };
 
-    if (scrollBehavior === 'closest') {
-      scrollContainersRef.current = findScrollContainers(buttonRef.current);
+    // Lắng nghe sự kiện scroll ở nhiều phần tử hơn, bao gồm cả `document`
+    scrollContainersRef.current = findScrollContainers(buttonRef.current);
+    scrollContainersRef.current.push(document, document.documentElement, document.body);
+    scrollContainersRef.current.forEach((container) => {
+      container.addEventListener('scroll', handleScroll);
+    });
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', updatePosition);
+
       scrollContainersRef.current.forEach((container) => {
-        container.addEventListener('scroll', handleScroll);
+        container.removeEventListener('scroll', handleScroll);
       });
 
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        window.removeEventListener('resize', updatePosition);
-
-        scrollContainersRef.current.forEach((container) => {
-          container.removeEventListener('scroll', handleScroll);
-        });
-
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    } else if (scrollBehavior === 'observer') {
-      observerRef.current = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            updatePosition();
-          }
-        },
-        { threshold: [0] }
-      );
-
-      if (buttonRef.current && observerRef.current) {
-        observerRef.current.observe(buttonRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
-
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        window.removeEventListener('resize', updatePosition);
-
-        if (observerRef.current && buttonRef.current) {
-          observerRef.current.unobserve(buttonRef.current);
-        }
-
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    }
-  }, [handleClickOutside, updatePosition, scrollBehavior]);
+    };
+  }, [handleClickOutside, updatePosition]);
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
