@@ -13,9 +13,11 @@ interface DropdownContentProps {
   searchValue: string;
   debouncedSearchValue: string;
   searchable: boolean;
+  variant: 'click' | 'hover';
   handleItemClick: (item: DropdownItem) => void;
   handleBreadcrumbClick: (index: number) => void;
   handleSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleItemHover?: (item: DropdownItem) => void;
 }
 
 const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
@@ -25,9 +27,11 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
   searchValue,
   debouncedSearchValue,
   searchable,
+  variant,
   handleItemClick,
   handleBreadcrumbClick,
   handleSearchChange,
+  handleItemHover,
 }, ref) => {
   const filteredItems = useMemo(() => {
     if (debouncedSearchValue === '') return currentItems;
@@ -37,7 +41,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
   }, [debouncedSearchValue, currentItems]);
 
   return (
-    <>
+    <div ref={ref} className="relative overflow-hidden">
       {searchable && (
         <div className="p-2">
           <input
@@ -76,6 +80,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
                 key={index}
                 onClick={() => handleItemClick(item)}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onMouseEnter={variant === 'hover' && handleItemHover ? () => handleItemHover(item) : undefined}
               >
                 {item.label}
               </button>
@@ -88,6 +93,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
                   key={index}
                   onClick={() => handleItemClick(item)}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onMouseEnter={variant === 'hover' && handleItemHover ? () => handleItemHover(item) : undefined}
                 >
                   {item.label}
                 </button>
@@ -95,7 +101,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 });
 

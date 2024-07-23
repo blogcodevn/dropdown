@@ -1,7 +1,5 @@
-import Image from "next/image";
+import { Dropdown } from "@/dropdown/Dropdown";
 import { Inter } from "next/font/google";
-import Dropdown from "@/components/dropdown/Dropdown";
-import { useEffect } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -66,7 +64,7 @@ export default function Home() {
     >
       <div className="h-[500px] overflow-y-auto w-full mt-[500px]" style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)' }}>
         <div className="h-[1000px] w-full" style={{ backgroundColor: 'rgba(0, 255, 0, 0.5)' }}>
-          <Dropdown items={items} portal={true} zIndex={999} menuWidth={400} withArrow>
+          <Dropdown items={items}>
             Dropdown
           </Dropdown>
         </div>

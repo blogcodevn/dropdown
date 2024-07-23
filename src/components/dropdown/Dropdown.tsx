@@ -1,12 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import {
-  useState,
-  useCallback,
-  useRef,
-  ReactElement,
-  cloneElement,
-  PropsWithChildren
-} from 'react';
+import { useState, useCallback, useRef, ReactElement, PropsWithChildren } from 'react';
 import ReactDOM from 'react-dom';
 import DropdownContent from './DropdownContent';
 import useDropdownPosition from './useDropdownPosition';
@@ -27,19 +19,9 @@ interface Position {
 }
 
 interface DropdownComponents {
-  DropdownButton?: ComponentWithRef<HTMLButtonElement, { onClick: () => void }>;
+  DropdownButton?: ComponentWithRef<HTMLButtonElement>;
   DropdownContainer?: ComponentWithRef<HTMLDivElement>;
-  DropdownMenu?: ComponentWithRef<HTMLDivElement, {
-    position: Position;
-    isPositioned: boolean;
-    menuWidth: number;
-    menuHeight: string | number;
-    zIndex?: number;
-    withArrow?: boolean;
-    arrowSize?: number;
-    arrowOffset?: number;
-    align: 'left' | 'right';
-  }>;
+  DropdownMenu?: ComponentWithRef<HTMLDivElement>;
 }
 
 interface DropdownProps {
@@ -55,6 +37,7 @@ interface DropdownProps {
   searchable?: boolean;
   components?: DropdownComponents;
   children?: React.ReactNode;
+  variant?: 'click' | 'hover'; // Thêm prop mới cho biến thể
 }
 
 const Dropdown: React.FC<PropsWithChildren<DropdownProps>> = ({
@@ -70,12 +53,14 @@ const Dropdown: React.FC<PropsWithChildren<DropdownProps>> = ({
   searchable = false,
   components = {},
   children,
+  variant = 'click',
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
   const [slideDirection, setSlideDirection] = useState<'none' | 'left' | 'right'>('none');
   const [searchValue, setSearchValue] = useState<string>('');
   const [debouncedSearchValue, setDebouncedSearchValue] = useState<string>('');
+  const [hoveredItem, setHoveredItem] = useState<DropdownItem | null>(null);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.children) {
@@ -87,6 +72,12 @@ const Dropdown: React.FC<PropsWithChildren<DropdownProps>> = ({
         setDebouncedSearchValue('');
         setSlideDirection('none');
       }, 300);
+    }
+  };
+
+  const handleItemHover = (item: DropdownItem) => {
+    if (item.children) {
+      setHoveredItem(item);
     }
   };
 
@@ -171,17 +162,36 @@ const Dropdown: React.FC<PropsWithChildren<DropdownProps>> = ({
       arrowOffset,
       align,
       children: (
-        <DropdownContent
-          currentItems={currentItems}
-          breadcrumb={breadcrumb}
-          slideDirection={slideDirection}
-          searchValue={searchValue}
-          debouncedSearchValue={debouncedSearchValue}
-          searchable={searchable}
-          handleItemClick={handleItemClick}
-          handleBreadcrumbClick={handleBreadcrumbClick}
-          handleSearchChange={handleSearchChange}
-        />
+        <>
+          <DropdownContent
+            currentItems={currentItems}
+            breadcrumb={breadcrumb}
+            slideDirection={slideDirection}
+            searchValue={searchValue}
+            debouncedSearchValue={debouncedSearchValue}
+            searchable={searchable}
+            variant={variant}
+            handleItemClick={handleItemClick}
+            handleBreadcrumbClick={handleBreadcrumbClick}
+            handleSearchChange={handleSearchChange}
+            handleItemHover={variant === 'hover' ? handleItemHover : undefined}
+          />
+          {hoveredItem && hoveredItem.children && variant === 'hover' && (
+            <DropdownContent
+              currentItems={hoveredItem.children}
+              breadcrumb={[...breadcrumb, hoveredItem]}
+              slideDirection="none"
+              searchValue=""
+              debouncedSearchValue=""
+              searchable={false}
+              variant={variant}
+              handleItemClick={handleItemClick}
+              handleBreadcrumbClick={handleBreadcrumbClick}
+              handleSearchChange={() => {}}
+              handleItemHover={handleItemHover}
+            />
+          )}
+        </>
       ),
     } as any,
     dropdownListRef
