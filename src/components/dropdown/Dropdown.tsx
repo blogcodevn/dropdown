@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import DropdownContent from './DropdownContent';
-import findScrollContainers from './findScrollContainers';
+import findScrollContainers from './findScrollContainers'; // Import the function
 
 interface DropdownItem {
   label: string;
@@ -30,12 +30,14 @@ const Dropdown: React.FC<DropdownProps> = ({
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [slideDirection, setSlideDirection] = useState<'none' | 'left' | 'right'>('none');
   const [childItems, setChildItems] = useState<DropdownItem[] | null>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState({ top: 0, left: 0, transformOrigin: 'top' });
   const [isPositioned, setIsPositioned] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
   const [debouncedSearchValue, setDebouncedSearchValue] = useState<string>('');
+  const [calculatedMenuHeight, setCalculatedMenuHeight] = useState<string | number>(menuHeight);
 
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownListRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainersRef = useRef<HTMLElement[]>([]);
@@ -77,15 +79,55 @@ const Dropdown: React.FC<DropdownProps> = ({
   };
 
   const updatePosition = useCallback(() => {
-    if (buttonRef.current) {
+    if (buttonRef.current && dropdownListRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceAbove = rect.top;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const listHeight = dropdownListRef.current.scrollHeight;
+
+      let calculatedHeight: number;
+      let topPosition: number;
+      let transformOrigin: string;
+
+      if (typeof menuHeight === 'string' && menuHeight === 'auto') {
+        if (listHeight <= spaceBelow) {
+          calculatedHeight = listHeight;
+          topPosition = rect.bottom + window.scrollY;
+          transformOrigin = 'top';
+        } else if (listHeight <= spaceAbove) {
+          calculatedHeight = listHeight;
+          topPosition = rect.top + window.scrollY - listHeight;
+          transformOrigin = 'bottom';
+        } else if (spaceBelow >= spaceAbove) {
+          calculatedHeight = spaceBelow;
+          topPosition = rect.bottom + window.scrollY;
+          transformOrigin = 'top';
+        } else {
+          calculatedHeight = spaceAbove;
+          topPosition = rect.top + window.scrollY - spaceAbove;
+          transformOrigin = 'bottom';
+        }
+      } else {
+        calculatedHeight = typeof menuHeight === 'number' ? menuHeight : 0; // Ensure calculatedHeight is a number
+        if (calculatedHeight <= spaceBelow) {
+          topPosition = rect.bottom + window.scrollY;
+          transformOrigin = 'top';
+        } else {
+          topPosition = rect.top + window.scrollY - calculatedHeight;
+          transformOrigin = 'bottom';
+        }
+      }
+
+      setCalculatedMenuHeight(calculatedHeight);
       setPosition({
-        top: rect.bottom + window.scrollY,
+        top: topPosition,
         left: rect.left + window.scrollX,
+        transformOrigin: transformOrigin,
       });
       setIsPositioned(true);
     }
-  }, []);
+  }, [menuHeight]);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
@@ -191,13 +233,14 @@ const Dropdown: React.FC<DropdownProps> = ({
       searchValue={searchValue}
       debouncedSearchValue={debouncedSearchValue}
       menuWidth={menuWidth}
-      menuHeight={menuHeight}
+      menuHeight={calculatedMenuHeight}
       portal={portal}
       position={position}
       zIndex={zIndex}
       handleItemClick={handleItemClick}
       handleBreadcrumbClick={handleBreadcrumbClick}
       handleSearchChange={handleSearchChange}
+      ref={dropdownListRef}
     />
   );
 

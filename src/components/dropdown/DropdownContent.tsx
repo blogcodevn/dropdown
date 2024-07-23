@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import classNames from 'classnames';
 
 interface DropdownItem {
@@ -23,7 +23,7 @@ interface DropdownContentProps {
   handleSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const DropdownContent: React.FC<DropdownContentProps> = ({
+const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
   currentItems,
   breadcrumb,
   slideDirection,
@@ -38,9 +38,7 @@ const DropdownContent: React.FC<DropdownContentProps> = ({
   handleItemClick,
   handleBreadcrumbClick,
   handleSearchChange,
-}) => {
-  const panelRef = useRef<HTMLDivElement>(null);
-
+}, ref) => {
   const filteredItems = useMemo(() => {
     if (debouncedSearchValue === '') return currentItems;
     return currentItems.filter((item) =>
@@ -50,7 +48,7 @@ const DropdownContent: React.FC<DropdownContentProps> = ({
 
   return (
     <div
-      ref={panelRef}
+      ref={ref}
       className={classNames(
         "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-x-hidden",
         {
@@ -67,6 +65,7 @@ const DropdownContent: React.FC<DropdownContentProps> = ({
         transformOrigin: 'top',
         width: `${menuWidth}px`,
         zIndex: zIndex,
+        maxHeight: menuHeight,
       }}
     >
       <div className="p-2">
@@ -127,6 +126,8 @@ const DropdownContent: React.FC<DropdownContentProps> = ({
       </div>
     </div>
   );
-};
+});
+
+DropdownContent.displayName = 'DropdownContent';
 
 export default DropdownContent;
