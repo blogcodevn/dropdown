@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import classNames from 'classnames';
 
@@ -23,8 +23,12 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
   const [childItems, setChildItems] = useState<DropdownItem[] | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [isPositioned, setIsPositioned] = useState<boolean>(false);
+  const [searchValue, setSearchValue] = useState<string>('');
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState<string>('');
+
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.children) {
@@ -33,6 +37,8 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
         setBreadcrumb([...breadcrumb, item]);
         setChildItems(item.children!);
         setCurrentItems(item.children!);
+        setSearchValue('');
+        setDebouncedSearchValue('');
         setSlideDirection('none');
       }, 300);
     }
@@ -46,6 +52,8 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
       setBreadcrumb(newBreadcrumb);
       setChildItems(null);
       setCurrentItems(newCurrentItems);
+      setSearchValue('');
+      setDebouncedSearchValue('');
       setSlideDirection('none');
     }, 300);
   };
@@ -70,10 +78,37 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
     }
   }, []);
 
+  const debounce = (func: (...args: any[]) => void, wait: number) => {
+    return (...args: any[]) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        func(...args);
+      }, wait);
+    };
+  };
+
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      setDebouncedSearchValue(query);
+    }, 300),
+    []
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchValue(query);
+    debouncedSearch(query);
+  };
+
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, [handleClickOutside]);
 
@@ -88,11 +123,18 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
     }
   }, [isOpen]);
 
+  const filteredItems = useMemo(() => {
+    if (debouncedSearchValue === '') return currentItems;
+    return currentItems.filter((item) =>
+      item.label.toLowerCase().includes(debouncedSearchValue.toLowerCase())
+    );
+  }, [debouncedSearchValue, currentItems]);
+
   const dropdownContent = (
     <div
       ref={panelRef}
       className={classNames(
-        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-hidden",
+        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-x-hidden",
         {
           "dropdown-enter": !isOpen,
           "dropdown-enter-active": isOpen && isPositioned,
@@ -106,53 +148,62 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
         opacity: isPositioned ? 1 : 0,
         transformOrigin: 'top',
         width: `${menuWidth}px`,
-        maxHeight: menuHeight,
         zIndex: zIndex,
-        overflowY: menuHeight !== 'auto' ? 'auto' : 'visible',
       }}
     >
+      <div className="p-2">
+        <input
+          type="text"
+          value={searchValue}
+          onChange={handleSearchChange}
+          placeholder="Search..."
+          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-2 text-gray-900"
+        />
+        {breadcrumb.length > 0 && (
+          <div className="flex items-center mb-2">
+            {breadcrumb.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => handleBreadcrumbClick(index)}
+                className="text-sm text-gray-500 hover:underline mr-2"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <div
-        className={classNames({
+        className={classNames("overflow-auto", {
           'transition-transform-left': slideDirection === 'left',
           'transition-transform-right': slideDirection === 'right',
           'no-transition': slideDirection === 'none',
         })}
-        style={{ width: '200%', display: 'flex' }}
+        style={{ maxHeight: menuHeight }}
       >
-        <div className="w-1/2">
-          {breadcrumb.length > 0 && (
-            <div className="flex items-center p-2">
-              {breadcrumb.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleBreadcrumbClick(index)}
-                  className="text-sm text-gray-500 hover:underline mr-2"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {currentItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={() => handleItemClick(item)}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className="w-1/2">
-          {childItems && childItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={() => handleItemClick(item)}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              {item.label}
-            </button>
-          ))}
+        <div style={{ width: '200%', display: 'flex' }}>
+          <div className="w-1/2">
+            {filteredItems.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => handleItemClick(item)}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-1/2">
+            {childItems && childItems.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => handleItemClick(item)}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
