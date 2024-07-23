@@ -22,6 +22,7 @@ interface DropdownContentProps {
   arrowSize?: number;
   arrowOffset?: number;
   align: 'left' | 'right';
+  searchable: boolean;
   handleItemClick: (item: DropdownItem) => void;
   handleBreadcrumbClick: (index: number) => void;
   handleSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -43,6 +44,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
   arrowSize = 10,
   arrowOffset = 10,
   align,
+  searchable,
   handleItemClick,
   handleBreadcrumbClick,
   handleSearchChange,
@@ -104,28 +106,30 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
         />
       )}
       <div className="relative overflow-hidden">
-        <div className="p-2">
-          <input
-            type="text"
-            value={searchValue}
-            onChange={handleSearchChange}
-            placeholder="Search..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-md mb-2 text-gray-900"
-          />
-          {breadcrumb.length > 0 && (
-            <div className="flex items-center mb-2">
-              {breadcrumb.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleBreadcrumbClick(index)}
-                  className="text-sm text-gray-500 hover:underline mr-2"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {searchable && (
+          <div className="p-2">
+            <input
+              type="text"
+              value={searchValue}
+              onChange={handleSearchChange}
+              placeholder="Search..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-md mb-2 text-gray-900"
+            />
+          </div>
+        )}
+        {breadcrumb.length > 0 && (
+          <div className="flex items-center mb-2">
+            {breadcrumb.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => handleBreadcrumbClick(index)}
+                className="text-sm text-gray-500 hover:underline mr-2"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
         <div
           className={classNames("overflow-auto", {
             'transition-transform-left': slideDirection === 'left',

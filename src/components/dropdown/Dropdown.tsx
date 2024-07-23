@@ -18,6 +18,7 @@ interface DropdownProps {
   withArrow?: boolean;
   arrowSize?: number;
   arrowOffset?: number;
+  searchable?: boolean;
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -30,6 +31,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   withArrow = false,
   arrowSize = 10,
   arrowOffset = 10,
+  searchable = false,
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
@@ -120,6 +122,7 @@ const Dropdown: React.FC<DropdownProps> = ({
       arrowSize={arrowSize}
       arrowOffset={arrowOffset}
       align={align}
+      searchable={searchable}
       handleItemClick={handleItemClick}
       handleBreadcrumbClick={handleBreadcrumbClick}
       handleSearchChange={handleSearchChange}
