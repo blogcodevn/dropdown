@@ -66,7 +66,7 @@ export default function Home() {
     >
       <div className="h-[500px] overflow-y-auto w-full mt-[500px]" style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)' }}>
         <div className="h-[1000px] w-full" style={{ backgroundColor: 'rgba(0, 255, 0, 0.5)' }}>
-          <Dropdown items={items} portal={true} zIndex={999} menuWidth={400} />
+          <Dropdown items={items} portal={true} zIndex={999} menuWidth={400} withArrow />
         </div>
       </div>
     </main>

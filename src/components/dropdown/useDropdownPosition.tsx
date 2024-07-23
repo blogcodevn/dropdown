@@ -78,7 +78,9 @@ const useDropdownPosition = ({ menuHeight, align }: UseDropdownPositionProps) =>
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
       buttonRef.current &&
-      !buttonRef.current.contains(event.target as Node)
+      dropdownListRef.current &&
+      !buttonRef.current.contains(event.target as Node) &&
+      !dropdownListRef.current.contains(event.target as Node)
     ) {
       setIsOpen(false);
       setIsPositioned(false);

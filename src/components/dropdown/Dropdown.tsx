@@ -15,6 +15,9 @@ interface DropdownProps {
   menuWidth?: number;
   menuHeight?: string | number;
   align?: 'left' | 'right';
+  withArrow?: boolean;
+  arrowSize?: number;
+  arrowOffset?: number;
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -24,6 +27,9 @@ const Dropdown: React.FC<DropdownProps> = ({
   menuWidth = 300,
   menuHeight = 'auto',
   align = 'left',
+  withArrow = false,
+  arrowSize = 10,
+  arrowOffset = 10,
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
@@ -110,6 +116,10 @@ const Dropdown: React.FC<DropdownProps> = ({
       portal={portal}
       position={position}
       zIndex={zIndex}
+      withArrow={withArrow}
+      arrowSize={arrowSize}
+      arrowOffset={arrowOffset}
+      align={align}
       handleItemClick={handleItemClick}
       handleBreadcrumbClick={handleBreadcrumbClick}
       handleSearchChange={handleSearchChange}
