@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import classNames from 'classnames';
+import DropdownContent from './DropdownContent';
+import findScrollContainers from './findScrollContainers';
 
 interface DropdownItem {
   label: string;
@@ -16,12 +17,13 @@ interface DropdownProps {
   scrollBehavior?: 'closest' | 'observer';
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ items,
+const Dropdown: React.FC<DropdownProps> = ({
+  items,
   portal = false,
   zIndex,
   menuWidth = 300,
   menuHeight = 'auto',
-  scrollBehavior = 'closest'
+  scrollBehavior = 'closest',
 }) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
@@ -34,8 +36,9 @@ const Dropdown: React.FC<DropdownProps> = ({ items,
   const [debouncedSearchValue, setDebouncedSearchValue] = useState<string>('');
 
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollContainersRef = useRef<HTMLElement[]>([]);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.children) {
@@ -86,8 +89,6 @@ const Dropdown: React.FC<DropdownProps> = ({ items,
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
-      panelRef.current &&
-      !panelRef.current.contains(event.target as Node) &&
       buttonRef.current &&
       !buttonRef.current.contains(event.target as Node)
     ) {
@@ -124,26 +125,30 @@ const Dropdown: React.FC<DropdownProps> = ({ items,
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', updatePosition);
 
+    const handleScroll = () => {
+      updatePosition();
+    };
+
     if (scrollBehavior === 'closest') {
-      const scrollContainer = buttonRef.current?.closest('div');
-      if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', updatePosition);
-      }
+      scrollContainersRef.current = findScrollContainers(buttonRef.current);
+      scrollContainersRef.current.forEach((container) => {
+        container.addEventListener('scroll', handleScroll);
+      });
 
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
         window.removeEventListener('resize', updatePosition);
 
-        if (scrollContainer) {
-          scrollContainer.removeEventListener('scroll', updatePosition);
-        }
+        scrollContainersRef.current.forEach((container) => {
+          container.removeEventListener('scroll', handleScroll);
+        });
 
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
         }
       };
     } else if (scrollBehavior === 'observer') {
-      const observer = new IntersectionObserver(
+      observerRef.current = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
             updatePosition();
@@ -152,16 +157,16 @@ const Dropdown: React.FC<DropdownProps> = ({ items,
         { threshold: [0] }
       );
 
-      if (buttonRef.current) {
-        observer.observe(buttonRef.current);
+      if (buttonRef.current && observerRef.current) {
+        observerRef.current.observe(buttonRef.current);
       }
 
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
         window.removeEventListener('resize', updatePosition);
 
-        if (buttonRef.current) {
-          observer.unobserve(buttonRef.current);
+        if (observerRef.current && buttonRef.current) {
+          observerRef.current.unobserve(buttonRef.current);
         }
 
         if (timeoutRef.current) {
@@ -172,95 +177,28 @@ const Dropdown: React.FC<DropdownProps> = ({ items,
   }, [handleClickOutside, updatePosition, scrollBehavior]);
 
   useEffect(() => {
-    if (isOpen && buttonRef.current && panelRef.current) {
+    if (isOpen && buttonRef.current) {
       updatePosition();
     }
   }, [isOpen, updatePosition]);
 
-  const filteredItems = useMemo(() => {
-    if (debouncedSearchValue === '') return currentItems;
-    return currentItems.filter((item) =>
-      item.label.toLowerCase().includes(debouncedSearchValue.toLowerCase())
-    );
-  }, [debouncedSearchValue, currentItems]);
-
   const dropdownContent = (
-    <div
-      ref={panelRef}
-      className={classNames(
-        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 overflow-x-hidden",
-        {
-          "dropdown-enter": !isOpen,
-          "dropdown-enter-active": isOpen && isPositioned,
-          "dropdown-exit": !isOpen,
-          "dropdown-exit-active": !isOpen && isPositioned,
-        }
-      )}
-      style={{
-        top: portal ? position.top : 'auto',
-        left: portal ? position.left : 'auto',
-        opacity: isPositioned ? 1 : 0,
-        transformOrigin: 'top',
-        width: `${menuWidth}px`,
-        zIndex: zIndex,
-      }}
-    >
-      <div className="p-2">
-        <input
-          type="text"
-          value={searchValue}
-          onChange={handleSearchChange}
-          placeholder="Search..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-2 text-gray-900"
-        />
-        {breadcrumb.length > 0 && (
-          <div className="flex items-center mb-2">
-            {breadcrumb.map((item, index) => (
-              <button
-                key={index}
-                onClick={() => handleBreadcrumbClick(index)}
-                className="text-sm text-gray-500 hover:underline mr-2"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div
-        className={classNames("overflow-auto", {
-          'transition-transform-left': slideDirection === 'left',
-          'transition-transform-right': slideDirection === 'right',
-          'no-transition': slideDirection === 'none',
-        })}
-        style={{ maxHeight: menuHeight }}
-      >
-        <div style={{ width: '200%', display: 'flex' }}>
-          <div className="w-1/2">
-            {filteredItems.map((item, index) => (
-              <button
-                key={index}
-                onClick={() => handleItemClick(item)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <div className="w-1/2">
-            {childItems && childItems.map((item, index) => (
-              <button
-                key={index}
-                onClick={() => handleItemClick(item)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <DropdownContent
+      currentItems={currentItems}
+      breadcrumb={breadcrumb}
+      slideDirection={slideDirection}
+      isPositioned={isPositioned}
+      searchValue={searchValue}
+      debouncedSearchValue={debouncedSearchValue}
+      menuWidth={menuWidth}
+      menuHeight={menuHeight}
+      portal={portal}
+      position={position}
+      zIndex={zIndex}
+      handleItemClick={handleItemClick}
+      handleBreadcrumbClick={handleBreadcrumbClick}
+      handleSearchChange={handleSearchChange}
+    />
   );
 
   return (
