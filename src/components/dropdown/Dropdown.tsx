@@ -66,6 +66,17 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
     });
   };
 
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+      setIsPositioned(true);
+    }
+  }, []);
+
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
       panelRef.current &&
@@ -104,24 +115,22 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', updatePosition);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', updatePosition);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [handleClickOutside]);
+  }, [handleClickOutside, updatePosition]);
 
   useEffect(() => {
     if (isOpen && buttonRef.current && panelRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      });
-      setIsPositioned(true);
+      updatePosition();
     }
-  }, [isOpen]);
+  }, [isOpen, updatePosition]);
 
   const filteredItems = useMemo(() => {
     if (debouncedSearchValue === '') return currentItems;
