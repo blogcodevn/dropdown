@@ -13,9 +13,16 @@ interface DropdownProps {
   zIndex?: number;
   menuWidth?: number;
   menuHeight?: string | number;
+  scrollBehavior?: 'closest' | 'observer';
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menuWidth = 300, menuHeight = 'auto' }) => {
+const Dropdown: React.FC<DropdownProps> = ({ items,
+  portal = false,
+  zIndex,
+  menuWidth = 300,
+  menuHeight = 'auto',
+  scrollBehavior = 'closest'
+}) => {
   const [currentItems, setCurrentItems] = useState<DropdownItem[]>(items);
   const [breadcrumb, setBreadcrumb] = useState<DropdownItem[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -117,14 +124,52 @@ const Dropdown: React.FC<DropdownProps> = ({ items, portal = false, zIndex, menu
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', updatePosition);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', updatePosition);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+    if (scrollBehavior === 'closest') {
+      const scrollContainer = buttonRef.current?.closest('div');
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', updatePosition);
       }
-    };
-  }, [handleClickOutside, updatePosition]);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('resize', updatePosition);
+
+        if (scrollContainer) {
+          scrollContainer.removeEventListener('scroll', updatePosition);
+        }
+
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    } else if (scrollBehavior === 'observer') {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            updatePosition();
+          }
+        },
+        { threshold: [0] }
+      );
+
+      if (buttonRef.current) {
+        observer.observe(buttonRef.current);
+      }
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('resize', updatePosition);
+
+        if (buttonRef.current) {
+          observer.unobserve(buttonRef.current);
+        }
+
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }
+  }, [handleClickOutside, updatePosition, scrollBehavior]);
 
   useEffect(() => {
     if (isOpen && buttonRef.current && panelRef.current) {
