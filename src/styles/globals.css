@@ -49,13 +49,13 @@ body {
 
 .dropdown-enter {
   opacity: 0;
-  transform: scaleX(0) scaleY(0);
+  transform: scaleX(0.9) scaleY(0.9);
 }
 
 .dropdown-enter-active {
   opacity: 1;
   transform: scaleX(1) scaleY(1);
-  transition: opacity 300ms, transform 300ms;
+  transition: opacity 300ms, transform 300ms, top 300ms, left 300ms, bottom 300ms, right 300ms;
 }
 
 .dropdown-exit {
@@ -65,8 +65,8 @@ body {
 
 .dropdown-exit-active {
   opacity: 0;
-  transform: scaleX(0) scaleY(0);
-  transition: opacity 300ms, transform 300ms;
+  transform: scaleX(0.9) scaleY(0.9);
+  transition: opacity 300ms, transform 300ms, top 300ms, left 300ms, bottom 300ms, right 300ms;
 }
 
 .dropdown-arrow {

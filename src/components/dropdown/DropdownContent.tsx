@@ -73,7 +73,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(({
     <div
       ref={ref}
       className={classNames(
-        "absolute mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 transition-transform duration-300",
+        "absolute mt-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 transition-transform transition-opacity duration-300 shadow-lg",
         {
           "dropdown-enter": !isPositioned,
           "dropdown-enter-active": isPositioned,
